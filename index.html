@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>🌱 Ферма мечты</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #d0f0c0;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    #garden {
+      margin: 20px auto;
+      width: 90%;
+      max-width: 600px;
+      background: #7cfc00;
+      border: 5px solid #4b8b3b;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      padding: 10px;
+      border-radius: 10px;
+    }
+    .garden-slot {
+      height: 100px;
+      background: #5cb85c;
+      border: 2px solid #4b8b3b;
+      border-radius: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 40px;
+      cursor: pointer;
+    }
+    .garden-slot:hover {
+      background: #4cae4c;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin: 10px;
+      cursor: pointer;
+      background: #4b8b3b;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background: #3d7230;
+    }
+    #money, #inventory {
+      font-size: 20px;
+      margin: 10px;
+    }
+    #shop, #inventory-list {
+      margin: 20px auto;
+      width: 90%;
+      max-width: 600px;
+      background: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    #timer {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    #shop-items {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 10px;
+    }
+    .shop-item {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌱 Ферма мечты</h1>
+  <div id="money">💰 Деньги: 100</div>
+  
+  <div id="garden">
+  </div>
+  
+  <button onclick="plantSeed()">Посадить</button>
+
+  <div id="shop">
+    <h2>🛒 Магазин</h2>
+    <div id="timer">До обновления магазина: 5:00</div>
+    <div id="shop-items"></div>
+  </div>
+
+  <div id="inventory">
+    <h2>🎒 Инвентарь</h2>
+    <div id="inventory-list"></div>
+  </div>
+
+  <script>
+    // Функции для работы с localStorage
+    function saveGame() {
+      const gameData = {
+        money,
+        gardenSlots,
+        inventory,
+        timer,
+        shopItems,
+        selectedItem,
+        lastUpdate: Date.now()
+      };
+      localStorage.setItem('farmGameData', JSON.stringify(gameData));
+    }
+
+    function loadGame() {
+      const savedData = localStorage.getItem('farmGameData');
+      if (savedData) {
+        const gameData = JSON.parse(savedData);
+        money = gameData.money || 100;
+        gardenSlots = gameData.gardenSlots || Array(10).fill(null);
+        inventory = gameData.inventory || {};
+        timer = gameData.timer || 300;
+        shopItems = gameData.shopItems || [];
+        selectedItem = gameData.selectedItem || null;
+        
+        // Если магазин пуст, обновляем его
+        if (shopItems.length === 0) {
+          refreshShop();
+        }
+      } else {
+        // Начальные значения, если сохранённых данных нет
+        money = 100;
+        gardenSlots = Array(10).fill(null);
+        inventory = {};
+        timer = 300;
+        refreshShop();
+      }
+    }
+
+    let money;
+    let gardenSlots;
+    let shopItems;
+    let inventory;
+    const maxGardenSlots = 10;
+    let timer;
+    let selectedItem;
+
+    const allItems = [
+      // [название, тип, мин цена покупки, макс цена покупки, мин цена продажи, макс цена продажи, шанс появления, иконка]
+      ["Помидор", "обычные", 5, 20, 20, 45, 100, "🍅"],
+      ["Яблоко", "обычные", 5, 20, 20, 45, 100, "🍎"],
+      ["Горох", "обычные", 5, 20, 25, 45, 100, "🌱"],
+      ["Морковь", "необычные", 150, 300, 170, 550, 80, "🥕"],
+      ["Банан", "необычные", 150, 300, 190, 600, 77, "🍌"],
+      ["Манго", "необычные", 150, 300, 210, 650, 74, "🥭"],
+      ["Ежевика", "необычные", 150, 300, 225, 700, 72, "🫐"],
+      ["Кукуруза", "необычные", 150, 300, 300, 750, 70, "🌽"],
+      ["Груша", "редкие", 1000, 2500, 1500, 3000, 65, "🍐"],
+      ["Арбуз", "редкие", 1000, 2500, 1800, 3500, 65, "🍉"],
+      ["Ананас", "редкие", 1000, 2500, 2100, 4000, 65, "🍍"],
+      ["Смородина", "редкие", 1000, 2500, 2350, 4500, 65, "🫚"],
+      ["Клубника", "редкие", 1000, 2500, 2600, 5000, 65, "🍓"],
+      ["Апельсин", "супер-редкие", 20000, 50000, 30000, 55000, 50, "🍊"],
+      ["Лимон", "супер-редкие", 20000, 50000, 33000, 60000, 50, "🍋"],
+      ["Виноград", "супер-редкие", 20000, 50000, 38000, 65000, 50, "🍇"],
+      ["Абрикос", "супер-редкие", 20000, 50000, 20000, 70000, 50, "🍑"],
+      ["Киви", "супер-редкие", 20000, 50000, 23500, 75000, 50, "🥝"],
+      ["Хурма", "супер-редкие", 20000, 50000, 28000, 80000, 50, "🍅"],
+      ["Персик", "супер-редкие", 20000, 50000, 30000, 85000, 50, "🍑"],
+      ["Папайя", "супер-редкие", 20000, 50000, 28000, 90000, 50, "🥭"],
+      ["Дыня", "супер-редкие", 20000, 50000, 27000, 95000, 50, "🍈"],
+      ["Гранат", "супер-редкие", 20000, 50000, 25000, 100000, 50, "🌺"],
+      ["Баклажан", "легендарные", 250000, 600000, 300000, 550000, 20, "🍆"],
+      ["Брокколи", "легендарные", 250000, 600000, 310000, 600000, 20, "🥦"],
+      ["Кабачок", "легендарные", 250000, 600000, 320000, 650000, 20, "🥒"],
+      ["Капуста", "легендарные", 250000, 600000, 330000, 700000, 20, "🥬"],
+      ["Картофель", "легендарные", 250000, 600000, 340000, 750000, 20, "🥔"],
+      ["Тыква", "легендарные", 250000, 600000, 360000, 800000, 20, "🎃"],
+      ["Огурец", "легендарные", 250000, 600000, 400000, 850000, 20, "🥒"],
+      ["Инжир", "легендарные", 250000, 600000, 300000, 900000, 20, "🍈"],
+      ["Грейпфрут", "легендарные", 250000, 600000, 290000, 1000000, 20, "🍊"],
+      ["Драконий фрукт", "мистические", 800000, 2000000, 1000000, 2000000, 10, "🐉"],
+      ["Бамбук", "мистические", 800000, 2000000, 1300000, 2200000, 10, "🎍"],
+      ["Гриб", "мистические", 800000, 2000000, 1550000, 2400000, 10, "🍄"],
+      ["Нектарин", "мистические", 800000, 2000000, 1800000, 2550000, 10, "🍑"],
+      ["Слива", "мистические", 800000, 2000000, 2000000, 2780000, 10, "🍑"],
+      ["Лук", "мистические", 800000, 2000000, 1100000, 3000000, 10, "🧅"],
+      
+      ["Какао", "призматические", 4000000, 8000000, 5000000, 10000000, 4, "🍫"],
+      ["Перец", "призматические", 4000000, 8000000, 6500000, 15000000, 4, "🌶️"],
+      ["Шпинат", "призматические", 4000000, 8000000, 7000000, 20000000, 4, "🥬"],
+      ["Чеснок", "призматические", 4000000, 8000000, 8500000, 25000000, 4, "🧄"],
+    ];
+
+    function getRandomFromRange(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function refreshShop() {
+      shopItems = [];
+      allItems.forEach(item => {
+        if (Math.random() * 100 < item[6]) {
+          shopItems.push(item);
+        }
+      });
+      shopItems = shopItems.sort(() => 0.5 - Math.random()).slice(0, 10);
+      renderShop();
+      saveGame();
+    }
+
+    function renderShop() {
+      const container = document.getElementById("shop-items");
+      container.innerHTML = "";
+      shopItems.forEach(item => {
+        const price = getRandomFromRange(item[2], item[3]);
+        const div = document.createElement("div");
+        div.className = "shop-item";
+        div.innerHTML = `${item[7]} ${item[0]} (${item[1]}) — ${price}💰 <button onclick='selectItem("${item[0]}", ${price}, "${item[7]}")'>Выбрать</button>`;
+        container.appendChild(div);
+      });
+    }
+
+    function selectItem(name, price, icon) {
+      selectedItem = { name, price, icon };
+      alert(`Выбрано растение ${icon} ${name} за ${price}💰. Теперь нажмите "Посадить" и выберите свободный слот.`);
+      saveGame();
+    }
+
+    function plantSeed() {
+      if (!selectedItem) {
+        alert("Сначала выберите растение в магазине!");
+        return;
+      }
+      
+      if (money < selectedItem.price) {
+        alert("Недостаточно денег!");
+        return;
+      }
+      
+      const freeSlotIndex = gardenSlots.findIndex(slot => slot === null);
+      
+      if (freeSlotIndex === -1) {
+        alert("Нет свободных слотов в саду!");
+        return;
+      }
+      
+      money -= selectedItem.price;
+      gardenSlots[freeSlotIndex] = {
+        name: selectedItem.name,
+        icon: selectedItem.icon
+      };
+      selectedItem = null;
+      updateUI();
+      saveGame();
+    }
+
+    function harvest(slotIndex) {
+      if (gardenSlots[slotIndex]) {
+        const item = gardenSlots[slotIndex];
+        const itemData = allItems.find(x => x[0] === item.name);
+        const earnings = getRandomFromRange(itemData[4], itemData[5]);
+        
+        if (!inventory[item.name]) {
+          inventory[item.name] = {
+            count: 0,
+            icon: item.icon
+          };
+        }
+        
+        inventory[item.name].count++;
+        alert(`Вы собрали ${item.icon} ${item.name} (можно продать за ${earnings}💰)`);
+        gardenSlots[slotIndex] = null;
+        updateUI();
+        saveGame();
+      } else {
+        alert("Этот слот пуст!");
+      }
+    }
+
+    function sellItem(name) {
+      const itemData = allItems.find(x => x[0] === name);
+      const price = getRandomFromRange(itemData[4], itemData[5]);
+      money += price;
+      inventory[name].count--;
+      
+      if (inventory[name].count <= 0) {
+        delete inventory[name];
+      }
+      
+      alert(`Вы продали ${inventory[name]?.icon || ''} ${name} за ${price}💰`);
+      updateUI();
+      saveGame();
+    }
+
+    function renderGarden() {
+      const garden = document.getElementById("garden");
+      garden.innerHTML = "";
+      
+      gardenSlots.forEach((slot, index) => {
+        const slotElement = document.createElement("div");
+        slotElement.className = "garden-slot";
+        slotElement.innerHTML = slot ? `🌿 ${slot.icon}` : "🌱";
+        slotElement.onclick = () => harvest(index);
+        garden.appendChild(slotElement);
+      });
+    }
+
+    function updateUI() {
+      document.getElementById("money").innerText = `💰 Деньги: ${money}`;
+      renderGarden();
+      
+      const inventoryList = document.getElementById("inventory-list");
+      inventoryList.innerHTML = Object.keys(inventory).length 
+        ? Object.keys(inventory).map(key => {
+            const item = allItems.find(x => x[0] === key);
+            const minSell = item[4];
+            const maxSell = item[5];
+            return `${inventory[key].icon} ${key}: ${inventory[key].count} (продажа: ${minSell}-${maxSell}💰) <button onclick='sellItem("${key}")'>Продать</button>`;
+          }).join("<br>")
+        : "Инвентарь пуст";
+    }
+
+    function updateTimer() {
+      timer--;
+      if (timer <= 0) {
+        refreshShop();
+        timer = 300;
+      }
+      const minutes = Math.floor(timer / 60);
+      const seconds = timer % 60;
+      document.getElementById("timer").innerText = `До обновления магазина: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+      saveGame();
+    }
+
+    // Инициализация игры
+    loadGame();
+    renderShop();
+    setInterval(updateTimer, 1000);
+    updateUI();
+
+    // Сохраняем игру при закрытии вкладки
+    window.addEventListener('beforeunload', saveGame);
+  </script>
+</body>
+</html>

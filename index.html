@@ -96,7 +96,7 @@
 
   <div id="shop">
     <h2>🛒 Магазин</h2>
-    <div id="timer">До обновления магазина: 5:00</div>
+    <div id="timer">До обновления магазина: 2:00</div>
     <div id="shop-items"></div>
   </div>
 
@@ -128,7 +128,7 @@
         money = gameData.money || 100;
         gardenSlots = gameData.gardenSlots || Array(10).fill(null);
         inventory = gameData.inventory || {};
-        timer = gameData.timer || 300;
+        timer = gameData.timer || 120;
         shopItems = gameData.shopItems || [];
         selectedItem = gameData.selectedItem || null;
         
@@ -141,7 +141,7 @@
         money = 100;
         gardenSlots = Array(10).fill(null);
         inventory = {};
-        timer = 300;
+        timer = 120;
         refreshShop();
       }
     }
@@ -165,22 +165,22 @@
       ["Манго", "необычные", 225, 450, 315, 975, 74, "🥭"],
       ["Ежевика", "необычные", 225, 450, 338, 1050, 72, "🫐"],
       ["Кукуруза", "необычные", 225, 450, 450, 1125, 70, "🌽"],
-      ["Кабачок", "необычные", 225, 450, 400, 1100, 70, "🥒"],
+      ["Цуккини", "необычные", 225, 450, 400, 1100, 70, "🥒"],
       ["Груша", "редкие", 1500, 3750, 2250, 4500, 65, "🍐"],
       ["Арбуз", "редкие", 1500, 3750, 2700, 5250, 65, "🍉"],
       ["Ананас", "редкие", 1500, 3750, 3150, 6000, 65, "🍍"],
-      ["Смородина", "редкие", 1500, 3750, 3525, 6750, 65, "🫚"],
+      ["Смородина", "редкие", 1500, 3750, 3525, 6750, 65, "🫐"],
       ["Клубника", "редкие", 1500, 3750, 3900, 7500, 65, "🍓"],
       ["Апельсин", "супер-редкие", 30000, 75000, 45000, 82500, 50, "🍊"],
       ["Лимон", "супер-редкие", 30000, 75000, 49500, 90000, 50, "🍋"],
       ["Виноград", "супер-редкие", 30000, 75000, 57000, 97500, 50, "🍇"],
       ["Абрикос", "супер-редкие", 30000, 75000, 30000, 105000, 50, "🍑"],
       ["Киви", "супер-редкие", 30000, 75000, 35250, 112500, 50, "🥝"],
-      ["Хурма", "супер-редкие", 30000, 75000, 42000, 120000, 50, "🍅"],
+      ["Хурма", "супер-редкие", 30000, 75000, 42000, 120000, 50, "🍊"],
       ["Персик", "супер-редкие", 30000, 75000, 45000, 127500, 50, "🍑"],
       ["Папайя", "супер-редкие", 30000, 75000, 42000, 135000, 50, "🥭"],
       ["Дыня", "супер-редкие", 30000, 75000, 40500, 142500, 50, "🍈"],
-      ["Гранат", "супер-редкие", 30000, 75000, 37500, 150000, 50, "🌺"],
+      ["Гранат", "супер-редкие", 30000, 75000, 37500, 150000, 50, "🍎"],
       ["Баклажан", "легендарные", 375000, 900000, 450000, 825000, 20, "🍆"],
       ["Брокколи", "легендарные", 375000, 900000, 465000, 900000, 20, "🥦"],
       ["Кабачок", "легендарные", 375000, 900000, 480000, 975000, 20, "🥒"],
@@ -196,7 +196,6 @@
       ["Нектарин", "мистические", 1200000, 3000000, 2700000, 3825000, 10, "🍑"],
       ["Слива", "мистические", 1200000, 3000000, 3000000, 4170000, 10, "🍑"],
       ["Лук", "мистические", 1200000, 3000000, 1650000, 4500000, 10, "🧅"],
-      
       ["Какао", "призматические", 6000000, 12000000, 7500000, 15000000, 4, "🍫"],
       ["Перец", "призматические", 6000000, 12000000, 9750000, 22500000, 4, "🌶️"],
       ["Шпинат", "призматические", 6000000, 12000000, 10500000, 30000000, 4, "🥬"],
@@ -237,11 +236,23 @@
         const price = getRandomFromRange(item.minBuy, item.maxBuy);
         const div = document.createElement("div");
         div.className = item.quantity <= 0 ? "shop-item out-of-stock" : "shop-item";
-        div.innerHTML = `
-          ${item.icon} ${item.name} (${item.type}) — ${price}💰 
-          <span>(${item.quantity} шт.)</span>
-          ${item.quantity > 0 ? `<button onclick='selectItem(${index}, ${price})'>Выбрать</button>` : '<span>Нет в наличии</span>'}
-        `;
+        
+        const itemName = document.createElement("span");
+        itemName.textContent = `${item.icon} ${item.name} (${item.type}) — ${price}💰 (${item.quantity} шт.)`;
+        
+        div.appendChild(itemName);
+        
+        if (item.quantity > 0) {
+          const button = document.createElement("button");
+          button.textContent = "Выбрать";
+          button.addEventListener("click", () => selectItem(index, price));
+          div.appendChild(button);
+        } else {
+          const span = document.createElement("span");
+          span.textContent = "Нет в наличии";
+          div.appendChild(span);
+        }
+        
         container.appendChild(div);
       });
     }
@@ -287,7 +298,9 @@
       money -= selectedItem.price;
       gardenSlots[freeSlotIndex] = {
         name: selectedItem.name,
-        icon: selectedItem.icon
+        icon: selectedItem.icon,
+        growthStage: 0,
+        growthTime: getRandomFromRange(3, 10) // Добавляем случайное время роста
       };
       selectedItem = null;
       
@@ -298,31 +311,49 @@
     }
 
     function harvest(slotIndex) {
-      if (gardenSlots[slotIndex]) {
-        const item = gardenSlots[slotIndex];
-        const itemData = allItems.find(x => x[0] === item.name);
-        const earnings = getRandomFromRange(itemData[4], itemData[5]);
-        
-        if (!inventory[item.name]) {
-          inventory[item.name] = {
-            count: 0,
-            icon: item.icon
-          };
-        }
-        
-        inventory[item.name].count++;
-        alert(`Вы собрали ${item.icon} ${item.name} (можно продать за ${earnings}💰)`);
-        gardenSlots[slotIndex] = null;
-        updateUI();
-        saveGame();
-      } else {
+      if (!gardenSlots[slotIndex]) {
         alert("Этот слот пуст!");
+        return;
       }
+
+      const item = gardenSlots[slotIndex];
+      const itemData = allItems.find(x => x[0] === item.name);
+      
+      if (!itemData) {
+        alert("Ошибка: не найдены данные о растении!");
+        return;
+      }
+      
+      const earnings = getRandomFromRange(itemData[4], itemData[5]);
+      
+      if (!inventory[item.name]) {
+        inventory[item.name] = {
+          count: 0,
+          icon: item.icon
+        };
+      }
+      
+      inventory[item.name].count++;
+      alert(`Вы собрали ${item.icon} ${item.name} (можно продать за ${earnings}💰)`);
+      gardenSlots[slotIndex] = null;
+      updateUI();
+      saveGame();
     }
 
     function sellItem(name) {
+      if (!inventory[name] || inventory[name].count <= 0) {
+        alert("Нет такого предмета в инвентаре!");
+        return;
+      }
+      
       const itemData = allItems.find(x => x[0] === name);
+      if (!itemData) {
+        alert("Ошибка: не найдены данные о предмете!");
+        return;
+      }
+      
       const price = getRandomFromRange(itemData[4], itemData[5]);
+      const icon = inventory[name].icon;
       money += price;
       inventory[name].count--;
       
@@ -330,7 +361,7 @@
         delete inventory[name];
       }
       
-      alert(`Вы продали ${inventory[name]?.icon || ''} ${name} за ${price}💰`);
+      alert(`Вы продали ${icon} ${name} за ${price}💰`);
       updateUI();
       saveGame();
     }
@@ -341,7 +372,7 @@
       
       for (const name in inventory) {
         const itemData = allItems.find(x => x[0] === name);
-        if (itemData) {
+        if (itemData && inventory[name].count > 0) {
           const price = getRandomFromRange(itemData[4], itemData[5]);
           totalEarnings += price * inventory[name].count;
           soldItems.push(`${inventory[name].icon} ${name} (${inventory[name].count} шт.)`);
@@ -380,6 +411,7 @@
       inventoryList.innerHTML = Object.keys(inventory).length 
         ? Object.keys(inventory).map(key => {
             const item = allItems.find(x => x[0] === key);
+            if (!item) return "";
             const minSell = item[4];
             const maxSell = item[5];
             return `${inventory[key].icon} ${key}: ${inventory[key].count} (продажа: ${minSell}-${maxSell}💰) <button onclick='sellItem("${key}")'>Продать</button>`;
@@ -391,7 +423,7 @@
       timer--;
       if (timer <= 0) {
         refreshShop();
-        timer = 300;
+        timer = 120; // 2 минуты
       }
       const minutes = Math.floor(timer / 60);
       const seconds = timer % 60;
